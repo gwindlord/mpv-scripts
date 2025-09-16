@@ -299,6 +299,44 @@ function crop_video(x1, y1, x2, y2)
             params= { x = tostring(x), y = tostring(y), w = tostring(w), h = tostring(h) }
         }
         mp.set_property_native("vf", vf_table)
+        local fname = mp.get_property("filename")
+        local out_fname = "crop_" .. fname
+        local inpath = mp.get_property("path")
+        local directory = inpath:gsub("[^/\\]*$", "")
+
+        mp.osd_message("FFmpeg crop started")
+        local args = {
+            "ffmpeg",
+            "-nostdin", "-y",
+            "-loglevel", "error",
+            "-i", inpath,
+            "-vf", "crop=" .. w .. ":" .. h .. ":" .. x .. ":" .. y,
+            "-c:v", "libx264",
+            "-c:a", "copy",
+            directory .. out_fname
+        }
+
+        mp.command_native_async({
+            name = "subprocess",
+            args = args,
+            playback_only = false},
+            function(success, result, error)
+                if success then
+                    if result and result.data then
+                        mp.osd_message("Result: " .. result.data)
+                    else
+                        mp.osd_message("Created file: " .. out_fname)
+                    end
+                else
+                    if error and error.data then
+                        mp.osd_message("Error: " .. error.data)
+                    else
+                        mp.osd_message("Command failed with an unknown error.")
+                    end
+                end
+            end
+        )
+
     end
 end
 
