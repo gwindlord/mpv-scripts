@@ -299,8 +299,7 @@ function crop_video(x1, y1, x2, y2)
             params= { x = tostring(x), y = tostring(y), w = tostring(w), h = tostring(h) }
         }
         mp.set_property_native("vf", vf_table)
-        local fname = mp.get_property("filename")
-        local out_fname = "crop_" .. fname
+        local out_fname = "crop_" .. mp.get_property("filename")
         local inpath = mp.get_property("path")
         local directory = inpath:gsub("[^/\\]*$", "")
 
