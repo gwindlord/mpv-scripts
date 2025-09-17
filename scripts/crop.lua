@@ -23,6 +23,11 @@ local opts = {
 }
 (require 'mp.options').read_options(opts)
 
+local x = 0
+local y = 0
+local w = 0
+local h = 0
+
 function split(input)
     local ret = {}
     for str in string.gmatch(input, "([^,]+)") do
@@ -263,8 +268,8 @@ end
 
 function crop_video(x1, y1, x2, y2)
     if active_mode == "soft" then
-        local w = x2 - x1
-        local h = y2 - y1
+        w = x2 - x1
+        h = y2 - y1
         local dim = mp.get_property_native("osd-dimensions")
         if not dim then return end
 
@@ -281,10 +286,10 @@ function crop_video(x1, y1, x2, y2)
         y2 = clamp(0, y2, 1)
         local vop = mp.get_property_native("video-out-params")
         local vf_table = mp.get_property_native("vf")
-        local x = math.floor(x1 * vop.w + 0.5)
-        local y = math.floor(y1 * vop.h + 0.5)
-        local w = math.floor((x2 - x1) * vop.w + 0.5)
-        local h = math.floor((y2 - y1) * vop.h + 0.5)
+        x = math.floor(x1 * vop.w + 0.5)
+        y = math.floor(y1 * vop.h + 0.5)
+        w = math.floor((x2 - x1) * vop.w + 0.5)
+        h = math.floor((y2 - y1) * vop.h + 0.5)
         if active_mode == "delogo" then
             -- delogo is a little special and needs some padding to function
             w = math.min(vop.w - 1, w)
@@ -299,44 +304,46 @@ function crop_video(x1, y1, x2, y2)
             params= { x = tostring(x), y = tostring(y), w = tostring(w), h = tostring(h) }
         }
         mp.set_property_native("vf", vf_table)
-        local out_fname = "crop_" .. mp.get_property("filename")
-        local inpath = mp.get_property("path")
-        local directory = inpath:gsub("[^/\\]*$", "")
+    end
+end
 
-        mp.osd_message("FFmpeg crop started")
-        local args = {
-            "ffmpeg",
-            "-nostdin", "-y",
-            "-loglevel", "error",
-            "-i", inpath,
-            "-vf", "crop=" .. w .. ":" .. h .. ":" .. x .. ":" .. y,
-            "-c:v", "libx264",
-            "-c:a", "copy",
-            directory .. out_fname
-        }
+function save_cropped_video()
+    local out_fname = "crop_" .. mp.get_property("filename")
+    local inpath = mp.get_property("path")
+    local directory = inpath:gsub("[^/\\]*$", "")
 
-        mp.command_native_async({
-            name = "subprocess",
-            args = args,
-            playback_only = false},
-            function(success, result, error)
-                if success then
-                    if result and result.data then
-                        mp.osd_message("Result: " .. result.data)
-                    else
-                        mp.osd_message("Created file: " .. out_fname)
-                    end
+    mp.osd_message("FFmpeg crop started")
+    local args = {
+        "ffmpeg",
+        "-nostdin", "-y",
+        "-loglevel", "error",
+        "-i", inpath,
+        "-vf", "crop=" .. w .. ":" .. h .. ":" .. x .. ":" .. y,
+        "-c:v", "libx264",
+        "-c:a", "copy",
+        directory .. out_fname
+    }
+
+    mp.command_native_async({
+        name = "subprocess",
+        args = args,
+        playback_only = false},
+        function(success, result, error)
+            if success then
+                if result and result.data then
+                    mp.osd_message("Result: " .. result.data)
                 else
-                    if error and error.data then
-                        mp.osd_message("Error: " .. error.data)
-                    else
-                        mp.osd_message("Command failed with an unknown error.")
-                    end
+                    mp.osd_message("Created file: " .. out_fname)
+                end
+            else
+                if error and error.data then
+                    mp.osd_message("Error: " .. error.data)
+                else
+                    mp.osd_message("Command failed with an unknown error.")
                 end
             end
-        )
-
-    end
+        end
+    )
 end
 
 function update_crop_zone_state()
@@ -469,3 +476,4 @@ bindings_repeat[opts.down_fine]    = movement_func(0, opts.fine_movement)
 
 mp.add_key_binding(nil, "start-crop", start_crop)
 mp.add_key_binding(nil, "toggle-crop", toggle_crop)
+mp.add_key_binding(nil, "save-crop", save_cropped_video)
